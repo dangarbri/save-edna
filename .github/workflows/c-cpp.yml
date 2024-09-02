@@ -8,7 +8,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x64
+          - os: ubuntu-latest
+            platform: linux-x64
+    runs-on: ${{matrix.os}}
     steps:
     - uses: actions/checkout@v4
     - name: make
@@ -17,5 +24,5 @@ jobs:
       uses: actions/upload-artifact@v4.4.0
       with:
         name: save_edna
-        path: save_edna
+        path: save_edna-${{matrix.platform}}
         retention-days: 5
