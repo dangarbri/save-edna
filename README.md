@@ -8,7 +8,7 @@ named `RECIPE.DAT`. That's the input to this program
 
 To recover recipes, first compile the program, then run
 ```bash
-ecb_extract RECIPE.DAT
+save_edna RECIPE.DAT
 ```
 
 This will print all recipes in the data file to stdout.
@@ -17,7 +17,7 @@ This will print all recipes in the data file to stdout.
 
 Normal Output:
 ```
-$ ./ecb_extract ~/PCBACKUP/ECB/RECIPE.DAT
+$ ./save_edna ~/PCBACKUP/ECB/RECIPE.DAT
 ------------
          id: 00001
    category: Vegetables
@@ -59,7 +59,7 @@ Instructions:
 The program can also output SQL for inserting the recipes into
 a database:
 ```
-$ ./ecb_extract --sql ~/PCBACKUP/ECB/RECIPE.DAT
+$ ./save_edna --sql ~/PCBACKUP/ECB/RECIPE.DAT
 INSERT INTO recipes(ecbid, name, category, subcategory, source)
 VALUES(1, 'Oriental Stir Fry', 'Vegetables', 'Other', 'Nutrition Education Sarah');
 
