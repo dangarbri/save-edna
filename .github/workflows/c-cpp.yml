@@ -1,0 +1,21 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: make
+      run: make -j $(nproc)
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4.4.0
+      with:
+        name: save_edna
+        path: save_edna
+        retention-days: 5
