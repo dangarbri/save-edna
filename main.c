@@ -4,6 +4,11 @@
 #include "ecb_extract.h"
 #include "sql.h"
 
+static const char* VERSION = "1.0.0";
+static void print_version(void) {
+  printf("Save Edna's Cook Book - Recovery Program - v%s\n", VERSION);
+}
+
 /**
  * Arguments parsed by the program
  */
@@ -42,9 +47,10 @@ int main(int argc, char** argv) {
  */
 void usage(const char* program_name) {
   printf("Usage:\n"
-         "  %s [--sql] <recipe file>\n\n"
-         "recipe file        This is the RECIPE.DAT file from your ECB program folder\n"
+         "  %s [-v|--sql] <recipe file>\n\n"
+         "         -v        Print version string\n"
          "      --sql        If this option is given, then SQL will be written to stdout\n"
+         "recipe file        This is the RECIPE.DAT file from your ECB program folder\n"
          "                   for inserting these recipes into a database\n", program_name);
 }
 
@@ -62,6 +68,11 @@ Args parse_cli_args(int argc, char** argv) {
   const char* data_file = NULL;
   RecipeHandler recipe_handler = print_recipe;
   for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-v") == 0) {
+      print_version();
+      exit(EXIT_SUCCESS);
+    }
+
     if (strcmp(argv[i], "--sql") == 0) {
       recipe_handler = recipe_to_sql;
     } else {
