@@ -12,7 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: make
-      run: make -j $(nproc)
+      run: make CFLAGS="-O2 -DNDEBUG" -j $(nproc)
+    - name: strip symbols
+      run: strip --only-keep-debug save_edna
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4.4.0
       with:
