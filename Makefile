@@ -1,5 +1,5 @@
 CFLAGS=-Wall -g
-OBJECTS=main.o ecb_extract.o bytes.o
+OBJECTS=main.o ecb_extract.o bytes.o sql.o
 
 .PHONY: all clean install
 

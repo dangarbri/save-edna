@@ -45,10 +45,6 @@ static Page read_page(FILE* fp);
  */
 static Recipe read_recipe(FILE* fp);
 
-/**
- * Releases memory allocated for a recipe/page
- */
-static void free_recipe(Recipe recipe);
 #define free_page(x) free_recipe(x)
 
 /**
@@ -258,7 +254,7 @@ static void merge(char*** a, size_t* a_len, const char** b, size_t b_len) {
   *a_len = total;
 }
 
-static void free_recipe(Recipe recipe) {
+void free_recipe(Recipe recipe) {
   free(recipe.id);
   free(recipe.category);
   free(recipe.subcategory);

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ecb_extract.h"
+#include "sql.h"
 
 /**
  * Arguments parsed by the program
@@ -40,8 +42,10 @@ int main(int argc, char** argv) {
  */
 void usage(const char* program_name) {
   printf("Usage:\n"
-         "  %s <recipe file>\n\n"
-         "recipe file        This is the RECIPE.DAT file from your ECB program folder\n", program_name);
+         "  %s [--sql] <recipe file>\n\n"
+         "recipe file        This is the RECIPE.DAT file from your ECB program folder\n"
+         "      --sql        If this option is given, then SQL will be written to stdout\n"
+         "                   for inserting these recipes into a database\n", program_name);
 }
 
 /**
@@ -50,14 +54,30 @@ void usage(const char* program_name) {
  */
 Args parse_cli_args(int argc, char** argv) {
   // Input must have the recipe.dat file as an argument
-  if (argc != 2) {
+  if (argc < 2) {
+    usage(argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  const char* data_file = NULL;
+  RecipeHandler recipe_handler = print_recipe;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--sql") == 0) {
+      recipe_handler = recipe_to_sql;
+    } else {
+      data_file = argv[i];
+    }
+  }
+
+  if (data_file == NULL) {
+    printf("Missing data file. See usage information below\n\n");
     usage(argv[0]);
     exit(EXIT_FAILURE);
   }
 
   // return parsed arguments
   return (Args) {
-    .recipe_data_file = argv[1],
-    .recipe_processor = print_recipe
+    .recipe_data_file = data_file,
+    .recipe_processor = recipe_handler
   };
 }

@@ -34,3 +34,8 @@ void print_recipe(Recipe recipe);
  * recipes.
  */
 int extract_recipes(FILE* fp, RecipeHandler recipe_fn);
+
+/**
+ * Free memory for a recipe instance
+ */
+void free_recipe(Recipe recipe);

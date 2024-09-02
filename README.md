@@ -15,3 +15,35 @@ This will print all recipes in the data file to stdout.
 
 You need to have a c compiler like gcc or clang, and have
 make installed. Then just run `make`.
+
+## SQL
+
+This program can output the data as a sql query by passing the `--sql` option.
+
+The table names are not customizable at this time, but the following
+tables are expected. You may use a different primary key on the recipes
+table, but the type of ecbid must be an int.
+
+```
+CREATE TABLE recipes (
+  ecbid       INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(40) NOT NULL,
+  category    VARCHAR(16) NOT NULL,
+  subcategory VARCHAR(16) NOT NULL,
+  source      VARCHAR(33) NOT NULL
+);
+
+CREATE TABLE recipe_ingredients (
+  id         INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  ecbid      INT         NOT NULL,
+  ingredient VARCHAR(33) NOT NULL,
+  FOREIGN KEY (ecbid) REFERENCES recipes(ecbid)
+);
+
+CREATE TABLE recipe_instructions (
+  id          INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  ecbid       INT         NOT NULL,
+  instruction VARCHAR(70) NOT NULL,
+  FOREIGN KEY (ecbid) REFERENCES recipes(ecbid)
+);
+```
