@@ -3,9 +3,9 @@ OBJECTS=main.o ecb_extract.o bytes.o sql.o
 
 .PHONY: all clean install
 
-all: ecb_extract
+all: save_edna
 
-ecb_extract: ${OBJECTS}
+save_edna: ${OBJECTS}
 	$(CC) $^ -o $@
 
 %.o: %.c
@@ -14,6 +14,6 @@ ecb_extract: ${OBJECTS}
 clean:
 	rm *.o
 
-install: ecb_extract
-	cp ecb_extract /usr/local/bin
+install: save_edna
+	cp $< /usr/local/bin
 
