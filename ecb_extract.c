@@ -2,7 +2,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ecb_extract.h"
+
+// This is how much space is consumed by each page in recipe.dat
+#define RECIPE_SIZE 1385
 
 /**
  * A Page is a special subset of a recipe with only 12 ingredients
@@ -28,9 +32,18 @@ typedef Recipe Page;
 static char* read_string(FILE* fp, int chunk_size);
 
 /**
- * Reads a page of the recipe file
+ * Reads a page of the recipe file.
+ * This will return a page with id == NULL when the end
+ * of the data file is reached.
  */
 static Page read_page(FILE* fp);
+
+/**
+ * This reads a recipe from the data file.
+ * A recipe can span multiple pages, each page is
+ * processed to return a single recipe
+ */
+static Recipe read_recipe(FILE* fp);
 
 /**
  * Releases memory allocated for a recipe/page
@@ -52,6 +65,27 @@ static void free_recipe(Recipe recipe);
  * until it finds some real data
  */
 static void find_data(FILE* fp);
+
+/**
+ * Merges two char** lists. The triple pointer is a lot, but it is
+ * equivalent to a pointer to an array of strings
+ *
+ * This copies the strings from b into a. A is resized to fit
+ * the new array length
+ */
+static void merge(char*** a, size_t* a_len, const char** b, size_t b_len);
+
+/**
+ * Clone the given string
+ */
+static char* str_clone(const char* str) {
+  char* out = malloc(strlen(str) + 1);
+  if (!out) { perror(NULL); exit(EXIT_FAILURE); }
+
+  strcpy(out, str);
+  return out;
+}
+
 
 /**
  * If an operation fails, this is called to print the error
@@ -78,13 +112,11 @@ int extract_recipes(FILE* fp, RecipeHandler recipe_fn) {
   // Just go until the reads fail.
   while (1) {
     // Now there's bytes of unknow stuff, skip past it
-    Page page = read_page(fp);
+    Recipe recipe = read_recipe(fp);
     // We successfully read the entire file.
-    if (page.id == NULL) return 0;
-    recipe_fn(page);
-    free_page(page);
-
-    try(fseek(fp, 9, SEEK_CUR), 0);
+    if (recipe.id == NULL) return 0;
+    recipe_fn(recipe);
+    free_recipe(recipe);
   }
   return EXIT_SUCCESS;
 }
@@ -96,11 +128,15 @@ static char* read_string(FILE* fp, int chunk_size) {
     return NULL;
   }
 
+  // Even if length is 0, read it anyway (as an empty string).
   char* str = malloc(len + 1);
   if (!str) { perror(NULL); exit(EXIT_FAILURE); }
 
-  // Read the string
-  try(fread(str, 1, len, fp), len);
+  if (len > 0) {
+    // Read the string
+    try(fread(str, 1, len, fp), len);
+  }
+
   // Add the null character
   str[len] = 0;
 
@@ -145,14 +181,81 @@ static Page read_page(FILE* fp) {
   if (!page.ingredients) { perror(NULL); exit(EXIT_FAILURE); }
   for (int i = 0; i < 12; i++) {
     page.ingredients[i] = read_ingredient(fp);
+
+    // If we've read a null ingredient, then we can set the number of
+    // ingredients to how many we were able to read. Only set this
+    // on the first NULL (handled by the n_ingredients == 12 check).
+    // We don't want to break because we need to use read_ingredient
+    // to continue to move the file pointer forward
+    if ((page.ingredients[i] == NULL) && (page.n_ingredients == 12)) {
+      page.n_ingredients = i;
+    }
   }
 
   page.instructions = malloc(sizeof(char*) * 12);
   if (!page.instructions) { perror(NULL); exit(EXIT_FAILURE); }
   for (int i = 0; i < 12; i++) {
     page.instructions[i] = read_instruction(fp);
+    // See comment above for why this is done.
+    if ((page.instructions[i] == NULL) && (page.n_instructions == 12)) {
+      page.n_instructions = i;
+    }
   }
+
+  try(fseek(fp, 9, SEEK_CUR), 0);
   return page;
+}
+
+
+static Recipe read_recipe(FILE* fp) {
+  // Read the first page of the recipe
+  Recipe recipe = read_page(fp);
+  while (1) {
+    // Move to the next recipe
+
+    // Read the next ID to see if its part of this recipe
+    char* id = read_string(fp, 6);
+    if (id == NULL) break;
+
+    // Move the file pointer back so the next page read works.
+    try(fseek(fp, -7, SEEK_CUR), 0);
+
+    // If the last character of the ID is a space, 
+    // then its a new recipe, so don't continue.
+    // But if it's a letter (not a space) then it is part of
+    // the current recipe, so read that page and merge it into
+    // the main recipe
+    if (id[5] != ' ') {
+      // Otherwise, it's part of this recipe, so we will combine them.
+      Page page = read_page(fp);
+      merge(&recipe.ingredients, &recipe.n_ingredients, (const char**) page.ingredients, page.n_ingredients);
+      merge(&recipe.instructions, &recipe.n_instructions, (const char**) page.instructions, page.n_instructions);
+      free_page(page);
+      free(id);
+    } else {
+      free(id);
+      break;
+    }
+  } 
+
+  return recipe;
+}
+
+static void merge(char*** a, size_t* a_len, const char** b, size_t b_len) {
+  assert(a); assert(a_len); assert(b);
+  size_t total = *a_len + b_len;
+  // If total is 0, there's nothing to do, so exit early.
+  // Do not continue, because then realloc will behave like free.
+  if (total == 0) return;
+
+  // reallocate a to have enough space for all elements.
+  *a = realloc(*a, sizeof(char*) * total);
+  if (!*a) { perror(NULL); exit(EXIT_FAILURE); }
+
+  for (size_t i = 0; i < b_len; i++) {
+    (*a)[i + *a_len] = str_clone(b[i]);
+  }
+  *a_len = total;
 }
 
 static void free_recipe(Recipe recipe) {
@@ -166,6 +269,7 @@ static void free_recipe(Recipe recipe) {
     if (str) free(str);
   }
   free(recipe.ingredients);
+
 
   for (size_t i = 0; i < recipe.n_instructions; i++) {
     char* str = recipe.instructions[i];
@@ -187,5 +291,5 @@ void print_recipe(Recipe recipe) {
 
   puts("Instructions:");
   for (size_t i = 0; i < recipe.n_instructions; i++)
-    printf(" %02ld. %s\n", i+1, recipe.instructions[i]);
+    printf("  %s\n", recipe.instructions[i]);
 }
